@@ -1,0 +1,40 @@
+# docker-compose.yml
+version: '3'
+networks:
+  default:
+    driver: bridge
+services:
+  pgPrimary:
+    image: postgres:12.1-alpine
+    restart: on-failure:5
+    command: 
+      - /bin/sh
+      - psql -U postgres -d postgres -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=838RU0XATU
+      - POSTGRES_DB=basedb
+      - DATABASE_URL=postgres://postgres:838RU0XATU@pgPrimary:5432/basedb
+  app:
+    build:
+      context: .
+    restart: on-failure:5
+    volumes:
+      - /var/lib/postgresql/data:/var/lib/postgresql/data
+    command:
+      - /bin/sh
+      - -c
+      - |
+        ./node_modules/.bin/node-pg-migrate up
+        node src/app.js
+    depends_on:
+      - pgPrimary
+    environment:
+      - NODE_ENV=development
+      - ENTRYPOINT_HTTP_PORT=8000
+      - POSTGRES_PRIMARY_URL=postgres://postgres:838RU0XATU@pgPrimary:5432/basedb
+      - DATABASE_URL=postgres://postgres:838RU0XATU@pgPrimary:5432/basedb
+    ports:
+      - '5500:8000'
